@@ -1,0 +1,26 @@
+#!/bin/bash
+
+install_godocdown()
+{
+  source="github.com/robertkrimen/godocdown/godocdown"
+  installer="go get $source"
+
+  echo "$source is required."
+  echo "$installer"
+
+  eval $installer
+}
+
+godocdown_exists()
+{
+  hash godocdown 2>/dev/null
+}
+
+generate_readme()
+{
+  godocdown . | sed 's/github.com\/[^\/]*\/grohl/github.com\/technoweenie\/grohl/g' > README.md
+  echo "Grohl Go documentation written to README.md in GitHub Flavored Markdown."
+}
+
+godocdown_exists || install_godocdown
+generate_readme
