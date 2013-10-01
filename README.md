@@ -1,128 +1,309 @@
-# Grohl
+# grohl
+--
+    import "github.com/technoweenie/grohl"
 
 Grohl is an opinionated library for outputting logs in a key=value structure.
 This event data is used to drive metrics and monitoring services.
 
-Dave Grohl is the lead singer of Foo Fighters.  I hear he's also passionate about
+Dave Grohl is the lead singer of Foo Fighters. I hear he's also passionate about
 event driven metrics.
-
-This is a Go version of [asenchi/scrolls](https://github.com/asenchi/scrolls).
-The rest of this README is a direct rip from scrolls, with the Ruby snippets
-replaced with Go.
 
 ## Usage
 
-At Heroku we are big believers in "logs as data". We log everything so
-that we can act upon that event stream of logs. Internally we use logs
-to produce metrics and monitoring data that we can alert on.
-
-Here's an example of a log you might specify in your application:
-
 ```go
-grohl.Log(grohl.LogData{"fn": "trap", "signal": s, "at": "exit", "status": 0})
+var CurrentContext = &Context{make(Data), CurrentLogger, "s", nil}
 ```
 
-The output of which might be:
-
-    fn=trap signal=TERM at=exit status=0
-
-This provides a rich set of data that we can parse and act upon.
-
-A feature of Grohl is setting contexts. Grohl has two types of
-context. One is 'global_context' that prepends every log in your
-application with that data and a local 'context' which can be used,
-for example, to wrap requests with a request id.
-
-In our example above, the log message is rather generic, so in order
-to provide more context we might set a global context that links this
-log data to our application and deployment:
+#### func  AddContext
 
 ```go
-grohl.AddContext("app", "myapp")
-grohl.AddContext("deploy", os.Getenv("DEPLOY"))
+func AddContext(key string, value interface{})
 ```
 
-This would change our log output above to:
-
-    app=myapp deploy=production fn=trap signal=TERM at=exit status=0
-
-If we were in a file and wanted to wrap a particular point of context
-we might also do something similar to:
+#### func  BuildLog
 
 ```go
-context := grohl.NewContext(grohl.LogData{"ns": "server"})
-context.Log(grohl.LogData{"fn": "trap", "signal": s, "at": "exit", "status": 0})
+func BuildLog(data Data, addTime bool) string
 ```
+Builds a log message as a single line from log data.
 
-This would be the output (taking into consideration our global context
-above):
-
-    app=myapp deploy=production ns=server fn=trap signal=TERM at=exit status=0
-
-This allows us to track this log to `Server#trap` and we received a
-'TERM' signal and exited 0.
-
-As you can see we have some standard nomenclature around logging.
-Here's a cheat sheet for some of the methods we use:
-
-* `app`: Application
-* `lib`: Library
-* `ns`: Namespace (Class, Module or files)
-* `fn`: Function
-* `at`: Execution point
-* `deploy`: Our deployment (typically an environment variable i.e. `DEPLOY=staging`)
-* `elapsed`: Measurements (Time)
-* `count`: Measurements (Counters)
-
-Grohl makes it easy to measure the run time of a portion of code.
-For example:
+#### func  Counter
 
 ```go
-timer := grohl.NewTimer(grohl.LogData{"fn": "test"})
-grohl.Log(grohl.LogData{"status": "exec"})
-// code here
-timer.Log(nil)
+func Counter(sampleRate float32, bucket string, n ...int)
 ```
 
-This will output the following log:
-
-    fn=test at=start
-    status=exec
-    fn=test at=finish elapsed=0.300
-
-You can change the time unit that Grohl uses to "milliseconds" (the
-default is "seconds"):
+#### func  DeleteContext
 
 ```go
-grohl.SetTimeUnit("ms")
+func DeleteContext(key string)
 ```
 
-If you need multiple loggers with different contexts or time units, you can
-create them instead of going through the `grohl` functions.  The functions work
-identically on grohl loggers with the exception of `SetTimeUnit()`.  You can
-access the TimeUnit field manually.
+#### func  ErrorBacktrace
 
 ```go
-buf := bytes.NewBuffer([]byte(""))
-logger := grohl.NewLogger(buf)
-logger.Log(grohl.LogData{"fn": "trap"})
+func ErrorBacktrace(err error) string
 ```
 
-Grohl has a rich #parse method to handle a number of cases. Here is
-a look at some of the ways Grohl handles certain values.
-
-Time and nil:
+#### func  ErrorBacktraceLines
 
 ```go
-grohl.Log("t": time.Date(2012, 6, 19, 11, 2, 47, 0, time.UTC), "this": nil)
-
-t=2012-06-19T11:02:47-0400 this=nil
+func ErrorBacktraceLines(err error) []string
 ```
 
-True/False:
+#### func  Format
 
 ```go
-grohl.Log("that": false, "this": true)
-
-that=false this=true
+func Format(value interface{}) string
 ```
+
+#### func  Gauge
+
+```go
+func Gauge(sampleRate float32, bucket string, value ...string)
+```
+
+#### func  Log
+
+```go
+func Log(data Data)
+```
+
+#### func  Report
+
+```go
+func Report(err error, data Data)
+```
+
+#### func  SetTimeUnit
+
+```go
+func SetTimeUnit(unit string)
+```
+
+#### func  TimeUnit
+
+```go
+func TimeUnit() string
+```
+
+#### func  Timing
+
+```go
+func Timing(sampleRate float32, bucket string, d ...time.Duration)
+```
+
+#### func  Watch
+
+```go
+func Watch(logger Logger, logch chan Data)
+```
+
+#### type ChannelLogger
+
+```go
+type ChannelLogger struct {
+}
+```
+
+
+#### func  NewChannelLogger
+
+```go
+func NewChannelLogger(channel chan Data) (*ChannelLogger, chan Data)
+```
+
+#### func (*ChannelLogger) Log
+
+```go
+func (l *ChannelLogger) Log(data Data) error
+```
+
+#### type Context
+
+```go
+type Context struct {
+	Logger            Logger
+	TimeUnit          string
+	ExceptionReporter ExceptionReporter
+}
+```
+
+
+#### func  NewContext
+
+```go
+func NewContext(data Data) *Context
+```
+
+#### func (*Context) Add
+
+```go
+func (c *Context) Add(key string, value interface{})
+```
+
+#### func (*Context) Counter
+
+```go
+func (c *Context) Counter(sampleRate float32, bucket string, n ...int)
+```
+
+#### func (*Context) Delete
+
+```go
+func (c *Context) Delete(key string)
+```
+
+#### func (*Context) Gauge
+
+```go
+func (c *Context) Gauge(sampleRate float32, bucket string, value ...string)
+```
+
+#### func (*Context) Log
+
+```go
+func (c *Context) Log(data Data) error
+```
+
+#### func (*Context) Merge
+
+```go
+func (c *Context) Merge(data Data) Data
+```
+
+#### func (*Context) New
+
+```go
+func (c *Context) New(data Data) *Context
+```
+
+#### func (*Context) Report
+
+```go
+func (c *Context) Report(err error, data Data) error
+```
+Implementation of ExceptionReporter that writes to a grohl logger.
+
+#### func (*Context) Timer
+
+```go
+func (c *Context) Timer(data Data) *Timer
+```
+A timer tracks the duration spent since its creation.
+
+#### func (*Context) Timing
+
+```go
+func (c *Context) Timing(sampleRate float32, bucket string, d ...time.Duration)
+```
+
+#### type Data
+
+```go
+type Data map[string]interface{}
+```
+
+
+#### type ExceptionReporter
+
+```go
+type ExceptionReporter interface {
+	Report(err error, data Data) error
+}
+```
+
+
+#### type IoLogger
+
+```go
+type IoLogger struct {
+	AddTime bool
+}
+```
+
+A really basic logger that builds lines and writes to any io.Writer. This
+expects the writers to be threadsafe.
+
+#### func  NewIoLogger
+
+```go
+func NewIoLogger(stream io.Writer) *IoLogger
+```
+
+#### func (*IoLogger) Log
+
+```go
+func (l *IoLogger) Log(data Data) error
+```
+
+#### type Logger
+
+```go
+type Logger interface {
+	Log(Data) error
+}
+```
+
+
+```go
+var CurrentLogger Logger = NewIoLogger(nil)
+```
+
+#### func  SetLogger
+
+```go
+func SetLogger(logger Logger) Logger
+```
+
+#### type Statter
+
+```go
+type Statter interface {
+	Counter(sampleRate float32, bucket string, n ...int)
+	Timing(sampleRate float32, bucket string, d ...time.Duration)
+	Gauge(sampleRate float32, bucket string, value ...string)
+}
+```
+
+
+```go
+var CurrentStatter Statter = CurrentContext
+```
+
+#### type Timer
+
+```go
+type Timer struct {
+	Started  time.Time
+	TimeUnit string
+}
+```
+
+
+#### func  NewTimer
+
+```go
+func NewTimer(data Data) *Timer
+```
+
+#### func (*Timer) Elapsed
+
+```go
+func (t *Timer) Elapsed() time.Duration
+```
+
+#### func (*Timer) Finish
+
+```go
+func (t *Timer) Finish()
+```
+Writes a final log message with the elapsed time shown.
+
+#### func (*Timer) Log
+
+```go
+func (t *Timer) Log(data Data) error
+```
+Writes a log message with extra data or the elapsed time shown. Pass nil or use
+Finish() if there is no extra data.
